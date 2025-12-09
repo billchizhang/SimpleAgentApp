@@ -1,0 +1,46 @@
+version: '3.8'
+
+services:
+  # Tool API Server - provides the actual tool endpoints
+  tool-api:
+    build: .
+    container_name: simpleagent-tool-api
+    working_dir: /app/backend
+    ports:
+      - "8000:8000"
+    command: ["uvicorn", "tool_api.main:app", "--host", "0.0.0.0", "--port", "8000"]
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/docs"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+
+  # Agent API Server - LLM-driven orchestration layer
+  agent-api:
+    build: .
+    container_name: simpleagent-agent-api
+    working_dir: /app/backend
+    ports:
+      - "8001:8001"
+    environment:
+      # IMPORTANT: Set your OpenAI API key here or via .env file
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - OPENAI_MODEL=${OPENAI_MODEL:-gpt-4o}
+      - MAX_ITERATIONS=${MAX_ITERATIONS:-5}
+      - USE_REACT=${USE_REACT:-true}
+      - TOOL_REGISTRY_PATH=/app/backend/tool_registry
+    command: ["uvicorn", "agent_api.main:app", "--host", "0.0.0.0", "--port", "8001"]
+    depends_on:
+      tool-api:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8001/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+
+networks:
+  default:
+    name: simpleagent-network

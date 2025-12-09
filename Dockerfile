@@ -6,11 +6,20 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 
 WORKDIR /app
 
-COPY requirements.txt ./
-RUN pip install --no-cache-dir -r requirements.txt
+# Copy backend code
+COPY backend ./backend
 
-COPY . .
+# Install dependencies
+RUN pip install --no-cache-dir -r backend/requirements.txt
 
-EXPOSE 8000
+# Copy startup script
+COPY start.sh ./start.sh
 
-CMD ["uvicorn", "tool_api.main:app", "--host", "0.0.0.0", "--port", "8000"]
+# Make startup script executable
+RUN chmod +x start.sh
+
+# Expose ports for both tool_api (8000) and agent_api (8001)
+EXPOSE 8000 8001
+
+# Default command runs both services via start.sh
+CMD ["./start.sh"]
