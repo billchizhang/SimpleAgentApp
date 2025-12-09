@@ -33,7 +33,22 @@ const AdminSidebar = () => {
       }
     } catch (error) {
       console.error('Create user error:', error);
-      const errorMessage = error.response?.data?.detail || 'Failed to create user';
+      let errorMessage = 'Failed to create user';
+
+      // Handle FastAPI validation errors (422)
+      if (error.response?.data?.detail) {
+        const detail = error.response.data.detail;
+
+        // If detail is an array of validation errors, extract messages
+        if (Array.isArray(detail)) {
+          errorMessage = detail.map(err => err.msg || err.message).join(', ');
+        } else if (typeof detail === 'string') {
+          errorMessage = detail;
+        } else {
+          errorMessage = 'Validation error occurred';
+        }
+      }
+
       setMessage(errorMessage);
       setMessageType('error');
     }
@@ -89,7 +104,8 @@ const AdminSidebar = () => {
             required
             disabled={loading}
             minLength={8}
-            placeholder="Min 8 characters"
+            maxLength={12}
+            placeholder="8-12 characters"
           />
         </div>
 

@@ -97,6 +97,15 @@ class ResponseFormatter:
                 summary_lines.append(f"      Error: {step.error}")
         return "\n".join(summary_lines)
 
+    def get_steps(self) -> List[Dict[str, Any]]:
+        """
+        Get all steps as a list of dictionaries.
+
+        Returns:
+            List of step dictionaries, suitable for JSON serialization
+        """
+        return [asdict(step) for step in self.steps]
+
     def get_step_count(self) -> int:
         """Return the total number of steps recorded."""
         return len(self.steps)

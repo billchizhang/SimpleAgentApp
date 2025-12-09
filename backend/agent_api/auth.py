@@ -22,16 +22,25 @@ def hash_password(password: str) -> str:
     Hash a password using bcrypt.
 
     Args:
-        password: Plain text password to hash
+        password: Plain text password to hash (max 72 bytes for bcrypt)
 
     Returns:
         Hashed password string (includes salt)
+
+    Raises:
+        ValueError: If password exceeds 72 bytes
 
     Example:
         >>> hashed = hash_password("MyPassword123!")
         >>> len(hashed)  # Bcrypt hashes are 60 characters
         60
     """
+    # Bcrypt has a 72-byte limit, but we enforce 8-12 characters at API level
+    # This is a safety check to ensure no encoding issues
+    password_bytes = password.encode('utf-8')
+    if len(password_bytes) > 72:
+        raise ValueError(f"Password is {len(password_bytes)} bytes, bcrypt limit is 72 bytes")
+
     return pwd_context.hash(password)
 
 

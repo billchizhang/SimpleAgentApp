@@ -9,8 +9,8 @@ help:
 	@echo ""
 	@echo "Usage:"
 	@echo "  make build        - Build Docker image"
-	@echo "  make run          - Run both services (requires OPENAI_API_KEY in .env)"
-	@echo "  make run-no-key   - Run tool API only (no OpenAI key needed)"
+	@echo "  make run          - Run all services (Frontend + Tool API + Agent API)"
+	@echo "  make run-no-key   - Run Frontend + Tool API only (no OpenAI key)"
 	@echo "  make stop         - Stop running container"
 	@echo "  make clean        - Remove Docker image and containers"
 	@echo "  make test         - Run all tests"
@@ -36,11 +36,13 @@ run:
 		exit 1; \
 	fi
 	@echo "🚀 Starting SimpleAgentApp..."
+	@echo "   Frontend:  http://localhost:3000"
 	@echo "   Tool API:  http://localhost:8000/docs"
 	@echo "   Agent API: http://localhost:8001/docs"
 	@echo ""
 	docker run -d \
 		--name simpleagentapp \
+		-p 3000:3000 \
 		-p 8000:8000 \
 		-p 8001:8001 \
 		--env-file .env \
@@ -48,13 +50,15 @@ run:
 	@echo "✅ Running! Use 'make logs' to view output"
 	@echo "   Stop with: make stop"
 
-# Run without OpenAI key (tool API only)
+# Run without OpenAI key (Frontend + Tool API only)
 run-no-key:
-	@echo "🚀 Starting Tool API only (no OpenAI key)..."
+	@echo "🚀 Starting Frontend + Tool API (no OpenAI key)..."
+	@echo "   Frontend: http://localhost:3000"
 	@echo "   Tool API: http://localhost:8000/docs"
 	@echo ""
 	docker run -d \
 		--name simpleagentapp \
+		-p 3000:3000 \
 		-p 8000:8000 \
 		simpleagentapp
 	@echo "✅ Running! Use 'make logs' to view output"

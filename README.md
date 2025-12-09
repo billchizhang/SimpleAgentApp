@@ -9,14 +9,17 @@ A generic API tool-calling framework that enables LLMs to invoke external APIs t
 make build && make run
 ```
 
-That's it! Both services will be running:
+That's it! All three services will be running:
+- **Frontend**: http://localhost:3000 (Login page)
 - **Tool API**: http://localhost:8000/docs
 - **Agent API**: http://localhost:8001/docs
 
 ## 📋 Prerequisites
 
-1. **Docker** installed
-2. **OpenAI API Key** export OPENAI_API_KEY=''
+1. **Docker** installed (for containerized deployment)
+2. **OpenAI API Key** - Get one from [OpenAI](https://platform.openai.com/api-keys)
+3. **Node.js** (v14+) and **npm** (for local frontend development only)
+4. **Python 3.8+** (for local backend development only)
 
 ## 🎯 Installation
 
@@ -48,11 +51,11 @@ make stop
 # Build image
 docker build -t simpleagentapp .
 
-# Run with API key
-docker run -d -p 8000:8000 -p 8001:8001 -e OPENAI_API_KEY=sk-... simpleagentapp
+# Run with API key (all three services: Frontend + Tool API + Agent API)
+docker run -d -p 3000:3000 -p 8000:8000 -p 8001:8001 -e OPENAI_API_KEY=sk-... simpleagentapp
 
-# Run without API key (Tool API only)
-docker run -d -p 8000:8000 simpleagentapp
+# Run without API key (Frontend + Tool API only, no Agent API)
+docker run -d -p 3000:3000 -p 8000:8000 simpleagentapp
 ```
 
 ### Option 3: Docker Compose
@@ -72,7 +75,8 @@ docker-compose down
 ### Option 4: Local Development
 
 ```bash
-# Install dependencies
+# Backend setup (from project root)
+cd backend
 pip install -r requirements.txt
 
 # Terminal 1: Tool API
@@ -81,14 +85,19 @@ python -m uvicorn tool_api.main:app --host 127.0.0.1 --port 8000
 # Terminal 2: Agent API
 export OPENAI_API_KEY="sk-..."
 python -m uvicorn agent_api.main:app --host 127.0.0.1 --port 8001
+
+# Terminal 3: Frontend (from project root)
+cd frontend
+npm install
+npm start  # Runs on port 3000
 ```
 
 ## 🏗️ Architecture
 
 ```
 ┌─────────────────┐
-│   Client App    │
-│  (Frontend/CLI) │
+│  React Frontend │  Port 3000 (React + serve)
+│  Login & Chat   │  User authentication & chat UI
 └────────┬────────┘
          │ HTTP REST
          ▼
@@ -191,11 +200,11 @@ make quick        # Build and run in one command
 # Build
 docker build -t simpleagentapp .
 
-# Run with everything
-docker run -d -p 8000:8000 -p 8001:8001 -e OPENAI_API_KEY=sk-... simpleagentapp
+# Run with everything (Frontend + Tool API + Agent API)
+docker run -d -p 3000:3000 -p 8000:8000 -p 8001:8001 -e OPENAI_API_KEY=sk-... simpleagentapp
 
-# Run tool API only
-docker run -d -p 8000:8000 simpleagentapp
+# Run without API key (Frontend + Tool API only)
+docker run -d -p 3000:3000 -p 8000:8000 simpleagentapp
 
 # Stop
 docker stop $(docker ps -q --filter ancestor=simpleagentapp)
@@ -222,6 +231,7 @@ python tests/test_llm_response.py
 ## 📚 Documentation
 
 - **[CLAUDE.md](CLAUDE.md)** - Main project documentation
+- **[frontend/README.md](frontend/README.md)** - Frontend application guide
 - **[agent_api/README.md](agent_api/README.md)** - Agent API documentation
 - **[agent_controller/README.md](agent_controller/README.md)** - Agent controller documentation
 - **[tests/README.md](tests/README.md)** - Testing guide
@@ -253,6 +263,20 @@ USE_REACT=true
 
 ## 🛠️ Components
 
+### Frontend (`frontend/`)
+React-based web application providing user authentication and chat interface.
+
+**Features:**
+- User authentication with role-based access
+- Interactive chat with AI agent
+- Admin panel for user management
+- ReAct reasoning visualization
+- Responsive design
+
+**Default Login:**
+- Admin: `admin` / `AdminPass123!`
+- User: `demo_user` / `UserPass123!`
+
 ### Agent API (`agent_api/`)
 FastAPI REST API providing HTTP endpoints for LLM queries with chat history support.
 
@@ -283,12 +307,14 @@ Pydantic-based schema and execution engine for API calls.
 ## 🌟 Features
 
 - ✅ **One-Command Startup** - `make build && make run`
+- ✅ **React Frontend** - Complete web UI with authentication and chat
+- ✅ **User Management** - Role-based access control (Admin/User)
 - ✅ **REST API** - HTTP interface for LLM queries
 - ✅ **Chat History** - Conversational context support
 - ✅ **ReAct Loop** - Transparent reasoning traces
-- ✅ **Docker Support** - Easy deployment
+- ✅ **Docker Support** - Easy deployment with all services
 - ✅ **Interactive Docs** - Swagger UI included
-- ✅ **CORS Enabled** - Frontend-ready
+- ✅ **CORS Enabled** - Frontend integration
 - ✅ **Health Monitoring** - Service status checks
 - ✅ **Comprehensive Tests** - Full test coverage
 
@@ -296,8 +322,8 @@ Pydantic-based schema and execution engine for API calls.
 
 ### Port already in use
 ```bash
-# Kill processes on ports 8000 and 8001
-lsof -ti:8000,8001 | xargs kill -9
+# Kill processes on ports 3000, 8000, and 8001
+lsof -ti:3000,8000,8001 | xargs kill -9
 ```
 
 ### Container won't start
@@ -346,10 +372,11 @@ make build
 
 After starting the application:
 
-1. **Explore the API** - Visit http://localhost:8001/docs
-2. **Try example queries** - Use the test scripts in `tests/`
-3. **Read the docs** - Check out the README files in each module
-4. **Build your app** - Integrate the API into your application
+1. **Use the Frontend** - Visit http://localhost:3000 to login and chat with the AI agent
+2. **Explore the APIs** - Check out http://localhost:8001/docs and http://localhost:8000/docs
+3. **Try example queries** - Use the test scripts in `tests/`
+4. **Read the docs** - Check out the README files in each module
+5. **Build your app** - Integrate the APIs into your application
 
 ---
 

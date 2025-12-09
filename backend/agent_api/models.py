@@ -149,7 +149,8 @@ class CreateUserRequest(BaseModel):
     password: str = Field(
         ...,
         min_length=8,
-        description="Password (minimum 8 characters)"
+        max_length=12,
+        description="Password (8-12 characters)"
     )
     email: EmailStr = Field(..., description="Valid email address")
     role: Literal["user", "admin"] = Field(
