@@ -1,0 +1,13 @@
+{
+  "name": "uppercase",
+  "description": "Transforms the provided text to uppercase characters.",
+  "url": "http://127.0.0.1:8000/uppercase",
+  "method": "GET",
+  "params": {
+    "text": {
+      "type": "string",
+      "required": true,
+      "description": "Plain text to capitalize."
+    }
+  }
+}

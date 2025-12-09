@@ -1,0 +1,19 @@
+{
+  "name": "weather",
+  "description": "Returns a pseudo-random Celsius temperature for the requested city on the given date.",
+  "url": "http://127.0.0.1:8000/weather",
+  "method": "GET",
+  "params": {
+    "city": {
+      "type": "string",
+      "required": true,
+      "description": "City to retrieve weather information for."
+    },
+    "date": {
+      "type": "string",
+      "required": true,
+      "format": "YYYY-MM-DD",
+      "description": "Date to associate with the generated forecast."
+    }
+  }
+}

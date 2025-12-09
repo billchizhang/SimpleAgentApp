@@ -1,0 +1,7 @@
+{
+  "url": "http://127.0.0.1:8000/count_word",
+  "method": "GET",
+  "params": {
+    "text": "one two three"
+  }
+}

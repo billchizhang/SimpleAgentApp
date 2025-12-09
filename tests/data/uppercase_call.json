@@ -1,0 +1,7 @@
+{
+  "url": "http://127.0.0.1:8000/uppercase",
+  "method": "get",
+  "params": {
+    "text": "generic_call test"
+  }
+}
