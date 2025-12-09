@@ -4,14 +4,19 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-SimpleAgentApp is a generic API tool-calling framework that enables LLMs to invoke external APIs through a standardized schema. The system consists of:
+SimpleAgentApp is a full-stack application with AI-powered backend and React frontend. The system consists of:
 - **Backend** (`backend/`): All backend code organized in a single directory
-  - **Agent API Server** (`backend/agent_api/`): FastAPI REST API for LLM-driven queries with chat history support
+  - **Agent API Server** (`backend/agent_api/`): FastAPI REST API with authentication and chat endpoints
   - **Tool API Server** (`backend/tool_api/`): FastAPI service providing various tool endpoints
   - **Agent Controller** (`backend/agent_controller/`): LLM-driven orchestration with ReAct loop for intelligent tool selection
   - **Generic Call Module** (`backend/function_call/`): Pydantic-based schema and execution engine for API calls
   - **Tool Registry** (`backend/tool_registry/`): JSON definitions of available tools
   - **Integration Tests** (`backend/tests/`): Comprehensive test harness with test data
+- **Frontend** (`frontend/`): React-based web interface
+  - **Login Page**: User authentication with role-based access
+  - **Chat Interface**: Interactive messaging with AI agent
+  - **Admin Panel**: User management sidebar for administrators
+  - **Authentication Context**: Global state management for user sessions
 - **Docker Configuration**: Dockerfile, docker-compose.yml, start.sh in root directory
 
 ## Commands
@@ -23,21 +28,23 @@ SimpleAgentApp is a generic API tool-calling framework that enables LLMs to invo
 # Build and run everything
 make build && make run
 
-# Access APIs:
+# Access services:
+# - Frontend:  http://localhost:3000 (Login page)
 # - Agent API: http://localhost:8001/docs
-# - Tool API: http://localhost:8000/docs
+# - Tool API:  http://localhost:8000/docs
 ```
 
 **Option 2: Using Docker**
 ```bash
 # Build and run with API key
-docker build -t simpleagentapp . && docker run -d -p 8000:8000 -p 8001:8001 -e OPENAI_API_KEY=sk-... simpleagentapp
+docker build -t simpleagentapp . && docker run -d -p 3000:3000 -p 8000:8000 -p 8001:8001 -e OPENAI_API_KEY=sk-... simpleagentapp
 
-# Or run tool API only (no API key needed)
-docker build -t simpleagentapp . && docker run -d -p 8000:8000 simpleagentapp
+# Or run without API key (frontend + tool API only)
+docker build -t simpleagentapp . && docker run -d -p 3000:3000 -p 8000:8000 simpleagentapp
 ```
 
-**What happens:** The single Docker container runs both services automatically using `start.sh`:
+**What happens:** The single Docker container runs all services automatically using `start.sh`:
+- Frontend on port 3000 (always)
 - Tool API on port 8000 (always)
 - Agent API on port 8001 (if `OPENAI_API_KEY` is set)
 
@@ -78,7 +85,40 @@ python -m uvicorn tool_api.main:app --host 127.0.0.1 --port 8000
 # Terminal 2: Agent API
 export OPENAI_API_KEY="sk-..."
 python -m uvicorn agent_api.main:app --host 127.0.0.1 --port 8001
+
+# Terminal 3: Frontend (optional, for local development)
+cd frontend
+npm install
+npm start
 ```
+
+### Frontend Development
+
+#### Local Development
+```bash
+cd frontend
+
+# Install dependencies
+npm install
+
+# Start development server (port 3000)
+npm start
+
+# Build for production
+npm run build
+```
+
+**Default Login Credentials:**
+- Admin: `admin` / `AdminPass123!`
+- User: `demo_user` / `UserPass123!`
+
+#### Environment Variables
+Create `frontend/.env.local` to override API URL:
+```bash
+REACT_APP_API_URL=http://custom-backend-url:8001
+```
+
+The development server proxies API requests to `http://localhost:8001` by default (configured in `package.json`).
 
 ### Running Tests
 ```bash
@@ -345,3 +385,158 @@ curl -X POST "http://localhost:8001/query" \
 ```
 
 See [agent_api/README.md](agent_api/README.md) for detailed API documentation.
+
+## Frontend Application
+
+The `frontend/` directory contains a React-based web application that provides a user-friendly interface for authentication and chatting with the AI agent.
+
+### Key Features
+- **User Authentication**: Secure login with role-based access control
+- **Interactive Chat**: Real-time messaging with AI agent powered by backend
+- **Admin Panel**: User management sidebar for administrators only
+- **ReAct Visualization**: View detailed reasoning steps from the agent
+- **Responsive Design**: Works on desktop and mobile devices
+- **Session Persistence**: User sessions stored in localStorage
+
+### Project Structure
+```
+frontend/
+├── public/
+│   └── index.html          # HTML entry point
+├── src/
+│   ├── components/
+│   │   └── AdminSidebar.js # Admin user management component
+│   ├── contexts/
+│   │   └── AuthContext.js  # Authentication state management
+│   ├── pages/
+│   │   ├── Login.js        # Login page
+│   │   └── Chat.js         # Main chat interface
+│   ├── services/
+│   │   └── api.js          # Backend API service layer
+│   ├── styles/             # CSS files for all components
+│   ├── App.js              # Main app with routing
+│   └── index.js            # React entry point
+├── package.json
+└── README.md
+```
+
+### Components
+
+#### AuthContext (`frontend/src/contexts/AuthContext.js`)
+Global authentication state management using React Context API:
+- Stores logged-in user data (uid, username, email, role)
+- Provides `login()`, `logout()`, and `isAdmin()` functions
+- Persists user session to localStorage
+- Automatically loads session on mount
+
+#### Login Page (`frontend/src/pages/Login.js`)
+User authentication interface:
+- Username and password input fields
+- Form validation and error handling
+- Redirects to chat after successful login
+- Displays default account credentials for convenience
+
+#### Chat Page (`frontend/src/pages/Chat.js`)
+Main application interface:
+- Message history with user and agent messages
+- Text input for sending queries to agent
+- Display of agent reasoning steps (expandable)
+- Conditionally renders AdminSidebar for admin users
+- Real-time chat with loading indicators
+- Auto-scroll to latest message
+
+#### AdminSidebar (`frontend/src/components/AdminSidebar.js`)
+User management panel (admin only):
+- Create new user accounts
+- Set username, email, password, and role
+- Input validation (username 3-50 chars, password min 8 chars)
+- Success/error message feedback
+- Automatically clears form after successful creation
+
+### API Integration
+
+The frontend communicates with backend via Axios HTTP client (`frontend/src/services/api.js`):
+
+**Authentication API:**
+```javascript
+authAPI.login(username, password)        // POST /auth/login
+authAPI.createUser(username, password, email, role)  // POST /auth/create_user
+```
+
+**Chat API:**
+```javascript
+chatAPI.sendMessage(query, chatHistory)  // POST /query
+chatAPI.getTools()                       // GET /tools
+```
+
+**Configuration:**
+- Base URL: `process.env.REACT_APP_API_URL` or `http://localhost:8001`
+- Proxy configured in `package.json` for development
+
+### Routing
+
+The application uses React Router v6 with protected routes:
+- `/` - Login page (public, redirects to /chat if logged in)
+- `/chat` - Chat interface (protected, requires authentication)
+- All other routes redirect to `/`
+
+**Route Protection:**
+- `ProtectedRoute` component checks authentication before rendering
+- `PublicRoute` component redirects authenticated users to chat
+- Loading state displayed while checking authentication
+
+### User Roles and Permissions
+
+**All Users:**
+- Login/logout
+- Send messages to AI agent
+- View agent responses with reasoning steps
+- Interactive chat history
+
+**Admin Users Only:**
+- All user features plus:
+- Access to AdminSidebar component
+- Create new user accounts
+- Assign user roles (User/Admin)
+- Manage user credentials
+
+### Styling
+
+Modern CSS3 with:
+- Gradient backgrounds (purple/blue theme)
+- Smooth animations and transitions
+- Hover effects on buttons
+- Responsive flexbox layouts
+- Loading indicators
+- Mobile-responsive design with media queries
+
+### Development Workflow
+
+1. **Install dependencies:**
+   ```bash
+   cd frontend && npm install
+   ```
+
+2. **Start development server:**
+   ```bash
+   npm start  # Runs on port 3000
+   ```
+
+3. **Build for production:**
+   ```bash
+   npm run build  # Output in build/ directory
+   ```
+
+4. **Serve production build:**
+   ```bash
+   npx serve -s build -l 3000
+   ```
+
+### Docker Deployment
+
+The frontend is built and served automatically in the Docker container:
+1. Stage 1: Node.js builder compiles React app (`npm run build`)
+2. Stage 2: Production image serves built files with `serve` package
+3. Frontend available on port 3000
+
+See [frontend/README.md](frontend/README.md) for detailed frontend documentation.

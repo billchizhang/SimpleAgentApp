@@ -8,10 +8,12 @@ This API wraps the agent_controller module to provide HTTP endpoints for:
 """
 
 import os
+import json
 from pathlib import Path
 from typing import Optional
 
 from fastapi import FastAPI, HTTPException, status
+from fastapi.responses import StreamingResponse
 from fastapi.middleware.cors import CORSMiddleware
 from dotenv import load_dotenv
 
@@ -143,6 +145,7 @@ async def root():
         "endpoints": {
             "health": "/health",
             "query": "/query (POST)",
+            "query_stream": "/query/stream (POST) - Streaming responses",
             "tools": "/tools",
             "auth_create_user": "/auth/create_user (POST)",
             "auth_login": "/auth/login (POST)",
@@ -270,6 +273,73 @@ async def process_query(request: QueryRequest):
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to process query: {str(e)}"
         )
+
+
+@app.post("/query/stream", tags=["Agent"])
+async def process_query_stream(request: QueryRequest):
+    """
+    Process a user query with streaming responses.
+
+    This endpoint streams the response as it's generated, allowing for
+    real-time display in the frontend. Responses are sent as newline-delimited JSON.
+
+    Each chunk is a JSON object with:
+    - {"type": "step", "data": {...}} - Reasoning/action steps
+    - {"type": "content", "data": "text"} - Incremental text content
+    - {"type": "metadata", "data": {...}} - Final metadata
+    - {"type": "error", "data": "error_msg"} - Error information
+
+    Args:
+        request: QueryRequest containing query, chat_history, and configuration
+
+    Returns:
+        StreamingResponse with newline-delimited JSON chunks
+
+    Raises:
+        HTTPException: If agent controller is not available
+    """
+    # Check if agent controller is available
+    if agent_controller is None:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Agent controller not available. Check OPENAI_API_KEY configuration."
+        )
+
+    async def generate():
+        """Generate streaming response chunks."""
+        try:
+            # Update controller configuration if provided
+            if request.use_react is not None:
+                agent_controller.use_react = request.use_react
+            if request.model is not None:
+                agent_controller.model = request.model
+            if request.max_iterations is not None:
+                agent_controller.max_iterations = request.max_iterations
+
+            # Process the query with streaming
+            for chunk in agent_controller.process_query_stream(
+                request.query,
+                request.chat_history
+            ):
+                # Send each chunk as newline-delimited JSON
+                yield json.dumps(chunk) + "\n"
+
+        except Exception as e:
+            # Send error as final chunk
+            error_chunk = {
+                "type": "error",
+                "data": str(e)
+            }
+            yield json.dumps(error_chunk) + "\n"
+
+    return StreamingResponse(
+        generate(),
+        media_type="application/x-ndjson",  # newline-delimited JSON
+        headers={
+            "Cache-Control": "no-cache",
+            "X-Accel-Buffering": "no"  # Disable buffering in nginx
+        }
+    )
 
 
 @app.get("/tools", tags=["Agent"])

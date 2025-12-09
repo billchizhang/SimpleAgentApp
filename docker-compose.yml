@@ -1,45 +1,29 @@
 version: '3.8'
 
 services:
-  # Tool API Server - provides the actual tool endpoints
-  tool-api:
+  # All-in-one service running frontend, tool API, and agent API
+  simpleagent-app:
     build: .
-    container_name: simpleagent-tool-api
-    working_dir: /app/backend
+    container_name: simpleagent-app
     ports:
-      - "8000:8000"
-    command: ["uvicorn", "tool_api.main:app", "--host", "0.0.0.0", "--port", "8000"]
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8000/docs"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 10s
-
-  # Agent API Server - LLM-driven orchestration layer
-  agent-api:
-    build: .
-    container_name: simpleagent-agent-api
-    working_dir: /app/backend
-    ports:
-      - "8001:8001"
+      - "3000:3000"  # Frontend
+      - "8000:8000"  # Tool API
+      - "8001:8001"  # Agent API
     environment:
       # IMPORTANT: Set your OpenAI API key here or via .env file
       - OPENAI_API_KEY=${OPENAI_API_KEY}
       - OPENAI_MODEL=${OPENAI_MODEL:-gpt-4o}
       - MAX_ITERATIONS=${MAX_ITERATIONS:-5}
       - USE_REACT=${USE_REACT:-true}
-      - TOOL_REGISTRY_PATH=/app/backend/tool_registry
-    command: ["uvicorn", "agent_api.main:app", "--host", "0.0.0.0", "--port", "8001"]
-    depends_on:
-      tool-api:
-        condition: service_healthy
+      - DB_PATH=data/users.db
+    volumes:
+      - ./data:/app/data
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8001/health"]
+      test: ["CMD", "curl", "-f", "http://localhost:3000", "&&", "curl", "-f", "http://localhost:8001/health"]
       interval: 30s
       timeout: 10s
       retries: 3
-      start_period: 10s
+      start_period: 15s
 
 networks:
   default:

@@ -16,7 +16,7 @@ That's it! Both services will be running:
 ## 📋 Prerequisites
 
 1. **Docker** installed
-2. **OpenAI API Key** - Get one at https://platform.openai.com/api-keys
+2. **OpenAI API Key** export OPENAI_API_KEY=''
 
 ## 🎯 Installation
 

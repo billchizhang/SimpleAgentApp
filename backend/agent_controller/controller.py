@@ -512,3 +512,217 @@ class AgentController:
         """
         # Use process_query_with_history without history
         return self.process_query_with_history(query, chat_history=None)
+
+    def process_query_stream(
+        self,
+        query: str,
+        chat_history: Optional[List[Dict[str, str]]] = None
+    ):
+        """
+        Process a user query with streaming responses.
+
+        Yields chunks of the response as they arrive from OpenAI, allowing
+        for real-time display in the frontend.
+
+        Args:
+            query: User's natural language query
+            chat_history: List of previous messages
+
+        Yields:
+            Dict chunks with types:
+                - {"type": "step", "data": step_dict} - Individual reasoning/action steps
+                - {"type": "content", "data": text} - Incremental text content
+                - {"type": "metadata", "data": {}} - Final metadata and completion
+                - {"type": "error", "data": error_msg} - Error information
+        """
+        # Initialize formatter for this query
+        self.formatter = ResponseFormatter()
+
+        try:
+            # Load tools if not already loaded
+            self._load_tools()
+
+            # Yield initial step
+            yield {
+                "type": "step",
+                "data": {
+                    "step_type": "load_registry",
+                    "description": f"Loaded {len(self.tools)} tools from registry"
+                }
+            }
+
+            # Build messages with history
+            system_prompt = REACT_SYSTEM_PROMPT if self.use_react else SIMPLE_SYSTEM_PROMPT
+            messages = [{"role": "system", "content": system_prompt}]
+
+            if chat_history:
+                messages.extend(chat_history)
+
+            messages.append({"role": "user", "content": query})
+
+            # Process with streaming
+            iteration = 0
+
+            while iteration < self.max_iterations:
+                # Call OpenAI with streaming enabled
+                response = self.client.chat.completions.create(
+                    model=self.model,
+                    messages=messages,
+                    tools=self.openai_tools,
+                    stream=True
+                )
+
+                # Collect response chunks
+                full_content = ""
+                tool_calls_data = []
+                finish_reason = None
+
+                for chunk in response:
+                    choice = chunk.choices[0] if chunk.choices else None
+                    if not choice:
+                        continue
+
+                    delta = choice.delta
+
+                    # Stream content as it arrives
+                    if delta.content:
+                        full_content += delta.content
+                        yield {
+                            "type": "content",
+                            "data": delta.content
+                        }
+
+                    # Collect tool calls
+                    if delta.tool_calls:
+                        for tc in delta.tool_calls:
+                            # Ensure we have enough space in the list
+                            while len(tool_calls_data) <= tc.index:
+                                tool_calls_data.append({
+                                    "id": None,
+                                    "name": None,
+                                    "arguments": ""
+                                })
+
+                            if tc.id:
+                                tool_calls_data[tc.index]["id"] = tc.id
+                            if tc.function and tc.function.name:
+                                tool_calls_data[tc.index]["name"] = tc.function.name
+                            if tc.function and tc.function.arguments:
+                                tool_calls_data[tc.index]["arguments"] += tc.function.arguments
+
+                    # Get finish reason
+                    if choice.finish_reason:
+                        finish_reason = choice.finish_reason
+
+                # Record reasoning if present
+                if full_content and self.use_react:
+                    self.formatter.add_step(
+                        "thought",
+                        "Agent reasoning",
+                        details={"reasoning": full_content}
+                    )
+                    yield {
+                        "type": "step",
+                        "data": {
+                            "step_type": "thought",
+                            "description": "Agent reasoning",
+                            "details": {"reasoning": full_content}
+                        }
+                    }
+
+                # Handle finish
+                if finish_reason == "stop":
+                    # Final answer reached
+                    self.formatter.add_step(
+                        "final_answer",
+                        "Generated final answer",
+                        details={"finish_reason": "stop", "iterations": iteration}
+                    )
+
+                    yield {
+                        "type": "metadata",
+                        "data": {
+                            "success": True,
+                            "steps": self.formatter.get_steps(),
+                            "complete": True
+                        }
+                    }
+                    return
+
+                elif finish_reason == "tool_calls" and tool_calls_data:
+                    # Execute tool calls
+                    for tc_data in tool_calls_data:
+                        tool_name = tc_data["name"]
+                        try:
+                            arguments = json.loads(tc_data["arguments"])
+                        except json.JSONDecodeError:
+                            arguments = {}
+
+                        # Yield action step
+                        self.formatter.add_step(
+                            "action",
+                            f"Calling tool: {tool_name}",
+                            details={"tool_name": tool_name, "arguments": arguments}
+                        )
+                        yield {
+                            "type": "step",
+                            "data": {
+                                "step_type": "action",
+                                "description": f"Calling tool: {tool_name}",
+                                "details": {"tool_name": tool_name, "arguments": arguments}
+                            }
+                        }
+
+                        # Execute tool
+                        result = self._execute_single_tool(tool_name, arguments)
+
+                        # Yield observation step
+                        yield {
+                            "type": "step",
+                            "data": {
+                                "step_type": "observation",
+                                "description": f"Received result from {tool_name}",
+                                "details": {"tool_name": tool_name, "result": result}
+                            }
+                        }
+
+                        # Add to messages
+                        messages.append({
+                            "role": "assistant",
+                            "content": full_content,
+                            "tool_calls": [{
+                                "id": tc_data["id"],
+                                "type": "function",
+                                "function": {
+                                    "name": tc_data["name"],
+                                    "arguments": tc_data["arguments"]
+                                }
+                            } for tc_data in tool_calls_data]
+                        })
+
+                        messages.append({
+                            "role": "tool",
+                            "tool_call_id": tc_data["id"],
+                            "content": json.dumps(result)
+                        })
+
+                    iteration += 1
+                else:
+                    # Unexpected finish reason
+                    yield {
+                        "type": "error",
+                        "data": f"Unexpected finish reason: {finish_reason}"
+                    }
+                    return
+
+            # Max iterations reached
+            yield {
+                "type": "error",
+                "data": f"Maximum iteration limit ({self.max_iterations}) reached"
+            }
+
+        except Exception as e:
+            yield {
+                "type": "error",
+                "data": str(e)
+            }

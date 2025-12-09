@@ -15,13 +15,21 @@ fi
 shutdown() {
     echo ""
     echo "🛑 Shutting down services..."
-    kill $TOOL_API_PID $AGENT_API_PID 2>/dev/null
-    wait $TOOL_API_PID $AGENT_API_PID 2>/dev/null
+    kill $TOOL_API_PID $AGENT_API_PID $FRONTEND_PID 2>/dev/null
+    wait $TOOL_API_PID $AGENT_API_PID $FRONTEND_PID 2>/dev/null
     echo "✅ Services stopped"
     exit 0
 }
 
 trap shutdown SIGTERM SIGINT
+
+# Start Frontend in background
+echo "🌐 Starting Frontend on port 3000..."
+serve -s frontend/build -l 3000 &
+FRONTEND_PID=$!
+
+# Give frontend a moment to start
+sleep 1
 
 # Change to backend directory
 cd backend
@@ -48,6 +56,7 @@ echo ""
 echo "✅ SimpleAgentApp is running!"
 echo ""
 echo "📡 Available services:"
+echo "   Frontend:  http://localhost:3000"
 echo "   Tool API:  http://localhost:8000/docs"
 if [ -n "$OPENAI_API_KEY" ]; then
     echo "   Agent API: http://localhost:8001/docs"
@@ -56,5 +65,5 @@ echo ""
 echo "Press Ctrl+C to stop all services"
 echo ""
 
-# Wait for both processes
-wait $TOOL_API_PID $AGENT_API_PID
+# Wait for all processes
+wait $FRONTEND_PID $TOOL_API_PID $AGENT_API_PID
