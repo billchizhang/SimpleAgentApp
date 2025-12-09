@@ -52,45 +52,10 @@ make stop
 docker build -t simpleagentapp .
 
 # Run with API key (all three services: Frontend + Tool API + Agent API)
-docker run -d -p 3000:3000 -p 8000:8000 -p 8001:8001 -e OPENAI_API_KEY=sk-... simpleagentapp
+docker run -d -p 3000:3000 -p 8000:8000 -p 8001:8001 -e OPENAI_API_KEY=
 
-# Run without API key (Frontend + Tool API only, no Agent API)
-docker run -d -p 3000:3000 -p 8000:8000 simpleagentapp
-```
 
-### Option 3: Docker Compose
 
-```bash
-# Setup
-cp .env.example .env
-# Edit .env and add OPENAI_API_KEY
-
-# Start
-docker-compose up
-
-# Stop
-docker-compose down
-```
-
-### Option 4: Local Development
-
-```bash
-# Backend setup (from project root)
-cd backend
-pip install -r requirements.txt
-
-# Terminal 1: Tool API
-python -m uvicorn tool_api.main:app --host 127.0.0.1 --port 8000
-
-# Terminal 2: Agent API
-export OPENAI_API_KEY="sk-..."
-python -m uvicorn agent_api.main:app --host 127.0.0.1 --port 8001
-
-# Terminal 3: Frontend (from project root)
-cd frontend
-npm install
-npm start  # Runs on port 3000
-```
 
 ## 🏗️ Architecture
 
@@ -230,7 +195,6 @@ python tests/test_llm_response.py
 
 ## 📚 Documentation
 
-- **[CLAUDE.md](CLAUDE.md)** - Main project documentation
 - **[frontend/README.md](frontend/README.md)** - Frontend application guide
 - **[agent_api/README.md](agent_api/README.md)** - Agent API documentation
 - **[agent_controller/README.md](agent_controller/README.md)** - Agent controller documentation
@@ -350,35 +314,6 @@ make clean
 make build
 ```
 
-## 📄 License
-
-[Your License Here]
-
-## 🤝 Contributing
-
-1. Fork the repository
-2. Create a feature branch
-3. Make your changes
-4. Run tests: `make test`
-5. Submit a pull request
-
-## 📞 Support
-
-- Documentation: [CLAUDE.md](CLAUDE.md)
-- API Docs: http://localhost:8001/docs
-- Issues: [GitHub Issues](your-repo-url/issues)
-
-## 🎯 Next Steps
-
-After starting the application:
-
-1. **Use the Frontend** - Visit http://localhost:3000 to login and chat with the AI agent
-2. **Explore the APIs** - Check out http://localhost:8001/docs and http://localhost:8000/docs
-3. **Try example queries** - Use the test scripts in `tests/`
-4. **Read the docs** - Check out the README files in each module
-5. **Build your app** - Integrate the APIs into your application
-
----
 
 **Quick Start Reminder:**
 ```bash
