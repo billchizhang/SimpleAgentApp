@@ -62,22 +62,6 @@ docker ps
 # Agent API: http://localhost:8001/docs
 
 
-
-
-## 🏗️ Architecture
-
-```mermaid
-graph TD
-    A[React Frontend<br/>Port 3000<br/>Login & Chat UI] -->|HTTP REST| B[Agent API<br/>Port 8001<br/>FastAPI + OpenAI<br/>LLM Orchestration]
-    B -->|Python calls| C[Agent Controller<br/>ReAct Loop<br/>Thought → Action → Observation]
-    C -->|HTTP calls| D[Tool API<br/>Port 8000<br/>FastAPI<br/>Tool Endpoints]
-
-    style A fill:#e1f5ff,stroke:#01579b,stroke-width:2px
-    style B fill:#f3e5f5,stroke:#4a148c,stroke-width:2px
-    style C fill:#fff3e0,stroke:#e65100,stroke-width:2px
-    style D fill:#e8f5e9,stroke:#1b5e20,stroke-width:2px
-```
-
 ## 📡 Usage Examples
 
 ### cURL
