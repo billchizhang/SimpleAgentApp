@@ -52,7 +52,7 @@ make stop
 docker build -t simpleagentapp .
 
 # Run with API key (all three services: Frontend + Tool API + Agent API)
-docker run -d -p 3000:3000 -p 8000:8000 -p 8001:8001 -e OPENAI_API_KEY=
+docker run -d -p 3000:3000 -p 8000:8000 -p 8001:8001 -e OPENAI_API_KEY='' simpleagentapp
 # Then check if the container is running 
 docker ps 
 # The frontend service should then be available at http://localhost:3000
@@ -62,64 +62,8 @@ docker ps
 # Agent API: http://localhost:8001/docs
 
 
-## 📡 Usage Examples
 
-### cURL
 
-```bash
-# Simple query
-curl -X POST "http://localhost:8001/query" \
-  -H "Content-Type: application/json" \
-  -d '{"query": "What is the weather in Boston?"}'
-
-# With chat history
-curl -X POST "http://localhost:8001/query" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "query": "What about tomorrow?",
-    "chat_history": [
-      {"role": "user", "content": "What is the weather today?"},
-      {"role": "assistant", "content": "It is 15°C in Boston."}
-    ]
-  }'
-```
-
-### Python
-
-```python
-import requests
-
-# Simple query
-response = requests.post(
-    "http://localhost:8001/query",
-    json={"query": "Convert 'hello world' to uppercase"}
-)
-
-result = response.json()
-print(f"Answer: {result['answer']}")
-
-# View reasoning steps
-for step in result['steps']:
-    print(f"{step['step_type']}: {step['description']}")
-```
-
-### JavaScript
-
-```javascript
-// Using fetch
-const response = await fetch('http://localhost:8001/query', {
-  method: 'POST',
-  headers: {'Content-Type': 'application/json'},
-  body: JSON.stringify({
-    query: "What's the weather in Boston?",
-    use_react: true
-  })
-});
-
-const result = await response.json();
-console.log('Answer:', result.answer);
-console.log('Steps:', result.steps.length);
-```
 
 ## 🎮 Available Commands
 
