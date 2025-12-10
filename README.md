@@ -53,6 +53,13 @@ docker build -t simpleagentapp .
 
 # Run with API key (all three services: Frontend + Tool API + Agent API)
 docker run -d -p 3000:3000 -p 8000:8000 -p 8001:8001 -e OPENAI_API_KEY=
+# Then check if the container is running 
+docker ps 
+# The frontend service should then be available at http://localhost:3000
+
+# Tool API doc available at Tool API:  http://localhost:8000/docs
+
+# Agent API: http://localhost:8001/docs
 
 
 
